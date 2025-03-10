@@ -7,7 +7,7 @@ local RuneGolemCheck = _G.RuneGolemCheck or false
 local foundBossesInServer = {} -- Track bosses announced in the current server
 local lastWebhookTime = 0 -- Track last webhook send time
 
-wait(20) -- Wait 20 seconds before starting the script 
+wait(15) -- Wait 20 seconds before starting the script 
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -93,7 +93,7 @@ local function hopServer()
     local suitableServers = {}
 
     for _, server in pairs(servers) do
-        if server.playing >= 3 and server.playing <= 8 and server.id ~= game.JobId then
+        if server.playing >= 3 and server.playing <= 10 and server.id ~= game.JobId then
             table.insert(suitableServers, server)
         end
     end
