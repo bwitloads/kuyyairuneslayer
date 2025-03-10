@@ -7,7 +7,7 @@ local RuneGolemCheck = _G.RuneGolemCheck or false
 local foundBossesInServer = {} -- Track bosses announced in the current server
 local lastWebhookTime = 0 -- Track last webhook send time
 
-wait(15) -- Wait 20 seconds before starting the script 
+wait(20) -- Wait 20 seconds before starting the script 
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -93,7 +93,7 @@ local function hopServer()
     local suitableServers = {}
 
     for _, server in pairs(servers) do
-        if server.playing >= 3 and server.playing <= 10 and server.id ~= game.JobId then
+        if server.playing >= 3 and server.playing <= 8 and server.id ~= game.JobId then
             table.insert(suitableServers, server)
         end
     end
@@ -105,7 +105,7 @@ local function hopServer()
 
         -- Reset boss announcement tracking and cooldown when hopping to a new server
         foundBossesInServer = {} -- Clear all boss announcements when hopping servers
-        lastWebhookTime = 0 -- Reset the cooldown timer
+        lastWebhookTime = tick() -- Reset the cooldown timer immediately after hopping
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
