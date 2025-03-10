@@ -103,8 +103,9 @@ local function hopServer()
         print("🌍 Hopping to server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
 
-        -- Reset boss announcement tracking when hopping to a new server
+        -- Reset boss announcement tracking and cooldown when hopping to a new server
         foundBossesInServer = {} -- Clear all boss announcements when hopping servers
+        lastWebhookTime = 0 -- Reset the cooldown timer
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
