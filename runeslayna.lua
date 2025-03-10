@@ -13,7 +13,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
-local CheckInterval = 5 -- How often to check for NPCs (in seconds)
+local CheckInterval = 60 -- How often to check for NPCs (in seconds)
 
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
