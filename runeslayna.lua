@@ -5,7 +5,6 @@ local DireBearCheck = _G.DireBearCheck or false
 local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBossesInServer = {} -- Track bosses announced in the current server
-local lastWebhookTime = 0 -- Track last webhook send time
 local currentServerID = nil -- Track the current server ID to avoid duplicate webhooks
 
 wait(20) -- Wait 20 seconds before starting the script 
@@ -19,15 +18,8 @@ local CheckInterval = 5 -- How often to check for NPCs (in seconds)
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
 
--- Function to send a message to Discord with a 50s cooldown
+-- Function to send a message to Discord (only once per server)
 local function sendWebhookMessage(bossName)
-    local currentTime = tick()
-
-    -- Ensure there's a 50s delay between each webhook
-    if (currentTime - lastWebhookTime) < 50 then
-        return
-    end
-
     -- Only send the webhook if we haven't already sent one for the current server
     if currentServerID == game.JobId then
         return
@@ -55,7 +47,6 @@ local function sendWebhookMessage(bossName)
     if response.StatusCode == 200 then
         print("✅ Webhook sent successfully for " .. bossName)
         foundBossesInServer[bossName] = true -- Mark boss as announced in this server
-        lastWebhookTime = currentTime -- Update last webhook send time
         currentServerID = game.JobId -- Set the current server ID to prevent duplicates
     else
         print("❌ Error sending webhook. Status Code: " .. response.StatusCode)
@@ -106,10 +97,9 @@ local function hopServer()
         print("🌍 Hopping to server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
 
-        -- Reset boss announcement tracking and cooldown when hopping to a new server
+        -- Reset boss announcement tracking when hopping to a new server
         foundBossesInServer = {} -- Clear all boss announcements when hopping servers
         currentServerID = nil -- Reset the server ID to allow webhook for new server
-        lastWebhookTime = tick() -- Reset the cooldown timer immediately after hopping
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
