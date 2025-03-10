@@ -18,7 +18,7 @@ local CheckInterval = 5 -- How often to check for NPCs (in seconds)
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
 
--- Function to send a message to Discord with a 60s cooldown
+-- Function to send a message to Discord with a 50s cooldown
 local function sendWebhookMessage(bossName)
     local currentTime = tick()
 
@@ -27,8 +27,8 @@ local function sendWebhookMessage(bossName)
         return
     end
 
-    -- Ensure there's a 60s delay between each webhook for the same server
-    if (currentTime - lastWebhookTime) < 60 then
+    -- Ensure there's a 50s delay between each webhook
+    if (currentTime - lastWebhookTime) < 50 then
         return
     end
 
