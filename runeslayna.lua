@@ -4,7 +4,7 @@ local ElderTreantCheck = _G.ElderTreantCheck or false
 local DireBearCheck = _G.DireBearCheck or false
 local RuneGolemCheck = _G.RuneGolemCheck or false
 
-local foundBosses = {} -- Track bosses announced in the session
+local foundBossesInServer = {} -- Track bosses announced in the current server
 local lastWebhookTime = 0 -- Track last webhook send time
 
 wait(20) -- Wait 20 seconds before starting the script 
@@ -21,9 +21,16 @@ local roleID = "1348612147592171585"
 -- Function to send a message to Discord with a 60s cooldown
 local function sendWebhookMessage(bossName)
     local currentTime = tick()
-    if foundBosses[bossName] or (currentTime - lastWebhookTime) < 60 then 
-        return 
-    end -- Prevent duplicate messages & enforce 60s delay
+
+    -- Check if the boss has already been announced in this server
+    if foundBossesInServer[bossName] then
+        return
+    end
+
+    -- Ensure there's a 60s delay between each webhook for the same server
+    if (currentTime - lastWebhookTime) < 60 then
+        return
+    end
 
     local playerId = LocalPlayer.UserId
     local playerProfileLink = string.format("https://roblox.com/users/%d/profile", playerId)
@@ -45,8 +52,8 @@ local function sendWebhookMessage(bossName)
 
     if response.StatusCode == 200 then
         print("✅ Webhook sent successfully for " .. bossName)
-        foundBosses[bossName] = true -- Mark boss as announced
-        lastWebhookTime = tick() -- Update last webhook send time
+        foundBossesInServer[bossName] = true -- Mark boss as announced in this server
+        lastWebhookTime = currentTime -- Update last webhook send time
     else
         print("❌ Error sending webhook. Status Code: " .. response.StatusCode)
     end
@@ -65,7 +72,7 @@ local function isTargetMobPresent()
         if obj:IsA("Model") or obj:IsA("Folder") or obj:IsA("Part") then
             local lowerName = string.lower(obj.Name)
             for _, mob in ipairs(mobs) do
-                if mob.enabled and not foundBosses[mob.name] and string.find(lowerName, string.lower(mob.name)) then
+                if mob.enabled and not foundBossesInServer[mob.name] and string.find(lowerName, string.lower(mob.name)) then
                     print("✅ " .. mob.name .. " FOUND!")
                     sendWebhookMessage(mob.name)
                     if mob.name == "Elder Treant" then
@@ -95,6 +102,9 @@ local function hopServer()
         local serverToJoin = suitableServers[math.random(1, #suitableServers)]
         print("🌍 Hopping to server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
+
+        -- Reset boss announcement tracking when hopping to a new server
+        foundBossesInServer = {} -- Clear all boss announcements when hopping servers
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
