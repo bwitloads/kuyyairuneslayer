@@ -5,6 +5,7 @@ local DireBearCheck = _G.DireBearCheck or false
 local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBosses = {} -- Track bosses announced in the session
+local lastWebhookTime = 0 -- Track last webhook send time
 
 wait(20) -- Wait 20 seconds before starting the script 
 
@@ -17,9 +18,12 @@ local CheckInterval = 5 -- How often to check for NPCs (in seconds)
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
 
--- Function to send a message to Discord
+-- Function to send a message to Discord with a 60s cooldown
 local function sendWebhookMessage(bossName)
-    if foundBosses[bossName] then return end -- Prevent duplicate messages
+    local currentTime = tick()
+    if foundBosses[bossName] or (currentTime - lastWebhookTime) < 60 then 
+        return 
+    end -- Prevent duplicate messages & enforce 60s delay
 
     local playerId = LocalPlayer.UserId
     local playerProfileLink = string.format("https://roblox.com/users/%d/profile", playerId)
@@ -42,6 +46,7 @@ local function sendWebhookMessage(bossName)
     if response.StatusCode == 200 then
         print("✅ Webhook sent successfully for " .. bossName)
         foundBosses[bossName] = true -- Mark boss as announced
+        lastWebhookTime = tick() -- Update last webhook send time
     else
         print("❌ Error sending webhook. Status Code: " .. response.StatusCode)
     end
