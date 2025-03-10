@@ -99,6 +99,7 @@ local function hopServer()
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
 
         -- Reset state only after hopping to a new server
+        sentJobIDs = {} -- Clear all job ID tracking for the new server
         foundBossesInServer = {} -- Clear all boss announcements for the new server
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
