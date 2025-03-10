@@ -1,0 +1,142 @@
+wait(20) -- Wait 20 seconds before starting the script
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local LocalPlayer = Players.LocalPlayer
+local CheckInterval = 5 -- How often to check for NPCs (in seconds)
+
+local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" -- Webhook URL
+local roleID = "1348612147592171585" -- Role ID to ping (for Elder Treant)
+
+-- Table to track bosses already found in the current session
+local foundBosses = {}
+
+-- Function to send a message to the Discord webhook with job ID, boss name, and player info
+local function sendWebhookMessage(bossName)
+    -- Check if the boss has already been found in this server
+    if foundBosses[bossName] then
+        return -- If boss was already found, exit the function to prevent duplicates
+    end
+
+    -- Getting the player's UserId and creating their profile link
+    local playerId = LocalPlayer.UserId
+    local playerProfileLink = string.format("https://roblox.com/users/%d/profile", playerId)
+
+    -- Check if the boss is Elder Treant and apply bold formatting
+    local bossMessage = bossName
+    local contentMessage = string.format("**Boss '%s' found in server with Job ID: %s**\nPlayer who found it: [Roblox Profile](%s)", bossMessage, game.JobId, playerProfileLink)
+
+    -- If the boss is Elder Treant, mention the role
+    if bossName == "Elder Treant" then
+        contentMessage = string.format("<@&%s> %s", roleID, contentMessage) -- Mention the role for Elder Treant
+    end
+
+    -- Create the data payload
+    local data = {
+        content = contentMessage
+    }
+
+    -- Convert the data to JSON format
+    local jsonData = HttpService:JSONEncode(data)
+
+    -- Send the POST request using http_request (works in most exploits)
+    local response = http_request({
+        Url = webhookURL,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = jsonData
+    })
+
+    -- Check if the request was successful
+    if response.StatusCode == 200 then
+        print("Webhook sent successfully for " .. bossName)
+        -- Mark this boss as found
+        foundBosses[bossName] = true
+    else
+        print("Error sending webhook. Status Code: " .. response.StatusCode)
+    end
+end
+
+-- Function to check if any of the target mobs exist in the server
+local function isTargetMobPresent()
+    local mobs = {"Elder Treant", "Vangar", "Rune Golem", "Dire Bear"}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("Folder") or obj:IsA("Part") then
+            local lowerName = string.lower(obj.Name)
+            for _, mob in ipairs(mobs) do
+                if string.find(lowerName, string.lower(mob)) then
+                    print("✅ " .. mob .. " FOUND!")
+                    sendWebhookMessage(mob) -- Send the webhook message with Job ID and boss name
+                    if mob == "Elder Treant" then
+                        return true -- Elder Treant found, stop hopping
+                    end
+                end
+            end
+        end
+    end
+    return false -- No Elder Treant found, continue hopping
+end
+
+-- Function to find and join a new server (3-8 players only)
+local function hopServer()
+    print("🔍 Searching for a new server with 3-8 players...")
+
+    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data
+    local suitableServers = {}
+
+    -- Find servers with 3-8 players
+    for _, server in pairs(servers) do
+        if server.playing >= 3 and server.playing <= 8 and server.id ~= game.JobId then
+            table.insert(suitableServers, server)
+        end
+    end
+
+    -- If suitable servers are found, hop to one
+    if #suitableServers > 0 then
+        local serverToJoin = suitableServers[math.random(1, #suitableServers)]
+        print("🌍 Hopping to server: " .. serverToJoin.id)
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
+    else
+        print("❌ No suitable servers found. Retrying in 10 seconds...")
+        wait(10) -- Wait before retrying
+        hopServer() -- Retry server hopping
+    end
+end
+
+-- Function to reset the boss tracking when the boss is no longer found
+local function resetBossTracking()
+    -- Reset found bosses if they are no longer in the game
+    for boss, _ in pairs(foundBosses) do
+        local bossExists = false
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") or obj:IsA("Part") then
+                local lowerName = string.lower(obj.Name)
+                if string.find(lowerName, string.lower(boss)) then
+                    bossExists = true
+                    break
+                end
+            end
+        end
+        if not bossExists then
+            foundBosses[boss] = nil  -- Reset the boss tracking if it’s no longer in the game
+        end
+    end
+end
+
+-- Main Loop: Keep hopping until Elder Treant is found
+while true do
+    wait(CheckInterval)
+
+    resetBossTracking()  -- Reset the tracking of bosses that are no longer in the game
+
+    if isTargetMobPresent() then
+        if workspace:FindFirstChild("Elder Treant") then
+            break -- Stop hopping if Elder Treant is found
+        end
+    else
+        hopServer() -- Hop to a new server if no mobs are found
+    end
+end
