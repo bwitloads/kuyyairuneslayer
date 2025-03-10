@@ -13,7 +13,6 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
-local CheckInterval = 60 -- How often to check for NPCs (in seconds)
 
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
@@ -71,9 +70,7 @@ local function isTargetMobPresent()
                 if mob.enabled and not foundBossesInServer[mob.name] and string.find(lowerName, string.lower(mob.name)) then
                     print("✅ " .. mob.name .. " FOUND!")
                     sendWebhookMessage(mob.name)
-                    if mob.name == "Elder Treant" then
-                        return true -- Stop hopping if Elder Treant is found
-                    end
+                    return true -- Only send once per server and stop after the first boss is found
                 end
             end
         end
@@ -111,12 +108,11 @@ end
 
 -- Main Loop
 while true do
-    wait(CheckInterval)
     if isTargetMobPresent() then
-        if workspace:FindFirstChild("Elder Treant") then
-            break
-        end
+        print("Boss found and webhook sent. Stopping for this server.")
+        break -- Stop after finding and sending the webhook for the first boss
     else
-        hopServer()
+        hopServer() -- Hop to a new server if no boss found
     end
+    wait(300) -- Wait 5 minutes before checking again after a hop
 end
