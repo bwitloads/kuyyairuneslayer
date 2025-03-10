@@ -5,7 +5,7 @@ local DireBearCheck = _G.DireBearCheck or false
 local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBossesInServer = {} -- Track bosses announced in the current server
-local currentServerID = nil -- Track the current server ID to avoid duplicate webhooks
+local sentJobIDs = {} -- Store job IDs to ensure webhook is sent only once per server
 
 wait(20) -- Wait 20 seconds before starting the script 
 
@@ -18,17 +18,18 @@ local CheckInterval = 5 -- How often to check for NPCs (in seconds)
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
 
--- Function to send a message to Discord (only once per server)
+-- Function to send a message to Discord (only once per server, based on job ID)
 local function sendWebhookMessage(bossName)
-    -- Only send the webhook if we haven't already sent one for the current server
-    if currentServerID == game.JobId then
+    local currentJobId = game.JobId
+    -- Only send the webhook if we haven't already sent one for the current job ID
+    if sentJobIDs[currentJobId] then
         return
     end
 
     -- Format the content message
     local playerId = LocalPlayer.UserId
     local playerProfileLink = string.format("https://roblox.com/users/%d/profile", playerId)
-    local contentMessage = string.format("**Boss '%s' found in server with Job ID: %s**\nPlayer: [Roblox Profile](%s)", bossName, game.JobId, playerProfileLink)
+    local contentMessage = string.format("**Boss '%s' found in server with Job ID: %s**\nPlayer: [Roblox Profile](%s)", bossName, currentJobId, playerProfileLink)
 
     if bossName == "Elder Treant" then
         contentMessage = string.format("<@&%s> %s", roleID, contentMessage)
@@ -47,7 +48,7 @@ local function sendWebhookMessage(bossName)
     if response.StatusCode == 200 then
         print("✅ Webhook sent successfully for " .. bossName)
         foundBossesInServer[bossName] = true -- Mark boss as announced in this server
-        currentServerID = game.JobId -- Set the current server ID to prevent duplicates
+        sentJobIDs[currentJobId] = true -- Store the job ID to prevent sending duplicate webhooks for this server
     else
         print("❌ Error sending webhook. Status Code: " .. response.StatusCode)
     end
@@ -97,9 +98,8 @@ local function hopServer()
         print("🌍 Hopping to server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
 
-        -- Reset boss announcement tracking when hopping to a new server
-        foundBossesInServer = {} -- Clear all boss announcements when hopping servers
-        currentServerID = nil -- Reset the server ID to allow webhook for new server
+        -- Reset state only after hopping to a new server
+        foundBossesInServer = {} -- Clear all boss announcements for the new server
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
