@@ -21,7 +21,8 @@ local roleID = "1348612147592171585"
 -- Function to send a message to Discord (only once per server, based on job ID)
 local function sendWebhookMessage(bossName)
     local currentJobId = game.JobId
-    -- Only send the webhook if we haven't already sent one for the current job ID
+
+    -- Check if the webhook for this job ID has already been sent
     if sentJobIDs[currentJobId] then
         return
     end
@@ -98,7 +99,7 @@ local function hopServer()
         print("🌍 Hopping to server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
 
-        -- Reset state only after hopping to a new server
+        -- Reset the tracking when hopping to a new server
         sentJobIDs = {} -- Clear all job ID tracking for the new server
         foundBossesInServer = {} -- Clear all boss announcements for the new server
     else
