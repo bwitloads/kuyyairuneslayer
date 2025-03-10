@@ -6,6 +6,7 @@ local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBossesInServer = {} -- Track bosses announced in the current server
 local lastWebhookTime = 0 -- Track last webhook send time
+local currentServerID = nil -- Track the current server ID to avoid duplicate webhooks
 
 wait(20) -- Wait 20 seconds before starting the script 
 
@@ -22,16 +23,17 @@ local roleID = "1348612147592171585"
 local function sendWebhookMessage(bossName)
     local currentTime = tick()
 
-    -- Check if the boss has already been announced in this server
-    if foundBossesInServer[bossName] then
-        return
-    end
-
     -- Ensure there's a 50s delay between each webhook
     if (currentTime - lastWebhookTime) < 50 then
         return
     end
 
+    -- Only send the webhook if we haven't already sent one for the current server
+    if currentServerID == game.JobId then
+        return
+    end
+
+    -- Format the content message
     local playerId = LocalPlayer.UserId
     local playerProfileLink = string.format("https://roblox.com/users/%d/profile", playerId)
     local contentMessage = string.format("**Boss '%s' found in server with Job ID: %s**\nPlayer: [Roblox Profile](%s)", bossName, game.JobId, playerProfileLink)
@@ -54,6 +56,7 @@ local function sendWebhookMessage(bossName)
         print("✅ Webhook sent successfully for " .. bossName)
         foundBossesInServer[bossName] = true -- Mark boss as announced in this server
         lastWebhookTime = currentTime -- Update last webhook send time
+        currentServerID = game.JobId -- Set the current server ID to prevent duplicates
     else
         print("❌ Error sending webhook. Status Code: " .. response.StatusCode)
     end
@@ -105,6 +108,7 @@ local function hopServer()
 
         -- Reset boss announcement tracking and cooldown when hopping to a new server
         foundBossesInServer = {} -- Clear all boss announcements when hopping servers
+        currentServerID = nil -- Reset the server ID to allow webhook for new server
         lastWebhookTime = tick() -- Reset the cooldown timer immediately after hopping
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
