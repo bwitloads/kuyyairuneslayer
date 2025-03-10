@@ -86,7 +86,7 @@ local function hopServer()
     local suitableServers = {}
 
     for _, server in pairs(servers) do
-        if server.playing >= 3 and server.playing <= 8 and server.id ~= game.JobId then
+        if server.playing >= 3 and server.playing <= 10 and server.id ~= game.JobId then
             table.insert(suitableServers, server)
         end
     end
