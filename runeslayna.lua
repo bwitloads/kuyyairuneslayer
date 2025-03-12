@@ -38,19 +38,21 @@ local function sendWebhookMessage(bossName)
     local data = { content = contentMessage }
     local jsonData = HttpService:JSONEncode(data)
 
-    local response = http_request({
-        Url = webhookURL,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = jsonData
-    })
+    local success, response = pcall(function()
+        return http_request({
+            Url = webhookURL,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = jsonData
+        })
+    end)
 
-    if response.StatusCode == 200 then
+    if success and response and response.StatusCode == 200 then
         print("✅ Webhook sent successfully for " .. bossName)
         foundBossesInServer[bossName] = true -- Mark boss as announced in this server
         sentJobIDs[currentJobId] = true -- Store the job ID to prevent sending duplicate webhooks for this server
     else
-        print("❌ Error sending webhook. Status Code: " .. response.StatusCode)
+        print("❌ Error sending webhook. Response:", response and response.StatusCode or "Unknown")
     end
 end
 
@@ -82,7 +84,18 @@ end
 local function hopServer()
     print("🔍 Searching for a new server with 3-8 players...")
 
-    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    end)
+
+    if not success or not result or not result.data then
+        print("❌ Failed to fetch server list. Retrying in 10 seconds...")
+        wait(10)
+        hopServer()
+        return
+    end
+
+    local servers = result.data
     local suitableServers = {}
 
     for _, server in pairs(servers) do
