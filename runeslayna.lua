@@ -84,23 +84,32 @@ end
 local function hopServer()
     print("🔍 Searching for a new server with 3-8 players...")
 
-    local success, result = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    end)
-
-    if not success or not result or not result.data then
-        print("❌ Failed to fetch server list. Retrying in 10 seconds...")
-        wait(10)
-        hopServer()
-        return
-    end
-
-    local servers = result.data
+    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    local nextCursor = nil
     local suitableServers = {}
 
-    for _, server in pairs(servers) do
-        if server.playing >= 1 and server.playing <= 10 and server.id ~= game.JobId then
-            table.insert(suitableServers, server)
+    while true do
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(url .. (nextCursor and "&cursor=" .. nextCursor or "")))
+        end)
+
+        if not success or not result or not result.data then
+            print("❌ Failed to fetch server list. Retrying in 10 seconds...")
+            wait(10)
+            return hopServer()
+        end
+
+        for _, server in pairs(result.data) do
+            if server.playing >= 3 and server.playing <= 10 and server.id ~= game.JobId then
+                table.insert(suitableServers, server)
+            end
+        end
+
+        -- Check if there's another page of results
+        if result.nextPageCursor then
+            nextCursor = result.nextPageCursor
+        else
+            break -- No more pages, stop searching
         end
     end
 
@@ -115,7 +124,7 @@ local function hopServer()
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
-        hopServer()
+        return hopServer()
     end
 end
 
