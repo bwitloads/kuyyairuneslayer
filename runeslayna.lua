@@ -96,7 +96,7 @@ local function getServerList()
         if success and result and result.data then
             -- Filter servers with valid player counts and different Job IDs
             for _, server in pairs(result.data) do
-                if server.id ~= game.JobId and server.playing >= 1 and server.playing <= 18 then
+                if server.id ~= game.JobId and server.playing >= 3 and server.playing <= 8 then
                     table.insert(servers, server)
                 end
             end
