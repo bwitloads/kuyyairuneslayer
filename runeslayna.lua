@@ -1,6 +1,4 @@
--- Wait until the game is fully loaded before running
-repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
-
+wait(10)
 -- Load configuration from _G (defaults to false if not set)
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
