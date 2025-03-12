@@ -90,13 +90,13 @@ local function hopServer()
 
     while true do
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url .. (nextCursor and "&cursor=" .. nextCursor or "")))
+            return HttpService:JSONDecode(game:HttpGet(url .. (nextCursor and "&cursor=" .. nextCursor or ""), true)) -- Added `true` to use headers
         end)
 
         if not success or not result or not result.data then
             print("❌ Failed to fetch server list. Retrying in 10 seconds...")
             wait(10)
-            return hopServer()
+            continue -- Skip this iteration and retry
         end
 
         for _, server in pairs(result.data) do
@@ -138,3 +138,4 @@ while true do
     end
     wait(300) -- Wait 5 minutes before checking again after a hop
 end
+print("กำลังจะhopนะ")
