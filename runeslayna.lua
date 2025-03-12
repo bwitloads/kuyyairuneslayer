@@ -1,3 +1,6 @@
+-- Wait until the game is fully loaded before running
+repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
+
 -- Load configuration from _G (defaults to false if not set)
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
@@ -6,8 +9,6 @@ local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBossesInServer = {} -- Track bosses announced in the current server
 local sentJobIDs = {} -- Store job IDs to ensure webhook is sent only once per server
-
-wait(20) -- Wait 20 seconds before starting the script 
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -80,51 +81,46 @@ local function isTargetMobPresent()
     return false
 end
 
--- Function to hop servers
-local function hopServer()
-    print("🔍 Searching for a new server with 3-8 players...")
-
-    local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+-- Function to get a list of available servers
+local function getServerList()
+    local servers = {}
     local nextCursor = nil
-    local suitableServers = {}
 
-    while true do
+    repeat
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url .. (nextCursor and "&cursor=" .. nextCursor or ""), true)) -- Added `true` to use headers
+            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100" .. (nextCursor and "&cursor=" .. nextCursor or ""), true))
         end)
 
-        if not success or not result or not result.data then
-            print("❌ Failed to fetch server list. Retrying in 10 seconds...")
-            wait(10)
-            continue -- Skip this iteration and retry
-        end
-
-        for _, server in pairs(result.data) do
-            if server.playing >= 3 and server.playing <= 10 and server.id ~= game.JobId then
-                table.insert(suitableServers, server)
+        if success and result and result.data then
+            for _, server in pairs(result.data) do
+                if server.id ~= game.JobId and server.playing >= 3 and server.playing <= 10 then
+                    table.insert(servers, server)
+                end
             end
-        end
-
-        -- Check if there's another page of results
-        if result.nextPageCursor then
             nextCursor = result.nextPageCursor
         else
-            break -- No more pages, stop searching
+            print("❌ Failed to fetch server list. Retrying in 10 seconds...")
+            wait(10)
         end
-    end
+    until not nextCursor
+
+    return servers
+end
+
+-- Function to hop servers
+local function hopServer()
+    print("🔍 Searching for a new server with 3-10 players...")
+
+    local suitableServers = getServerList()
 
     if #suitableServers > 0 then
         local serverToJoin = suitableServers[math.random(1, #suitableServers)]
         print("🌍 Hopping to server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
-
-        -- Reset the tracking when hopping to a new server
-        sentJobIDs = {} -- Clear all job ID tracking for the new server
-        foundBossesInServer = {} -- Clear all boss announcements for the new server
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
-        return hopServer()
+        hopServer()
     end
 end
 
@@ -138,4 +134,3 @@ while true do
     end
     wait(300) -- Wait 5 minutes before checking again after a hop
 end
-print("กำลังจะhopนะ")
