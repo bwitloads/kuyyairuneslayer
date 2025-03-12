@@ -85,6 +85,8 @@ end
 local function getServerList()
     local servers = {}
     local nextCursor = nil
+    local retryLimit = 3
+    local retries = 0
 
     repeat
         local success, result = pcall(function()
@@ -92,18 +94,25 @@ local function getServerList()
         end)
 
         if success and result and result.data then
+            -- Filter servers with valid player counts and different Job IDs
             for _, server in pairs(result.data) do
                 if server.id ~= game.JobId and server.playing >= 1 and server.playing <= 18 then
                     table.insert(servers, server)
                 end
             end
-            nextCursor = result.nextPageCursor
+            if #servers > 0 then
+                return servers
+            else
+                print("❌ No suitable servers found in this batch.")
+            end
         else
-            print("❌ Failed to fetch server list. Retrying in 10 seconds...")
+            retries = retries + 1
+            print("❌ Failed to fetch server list. Retrying... (" .. retries .. "/" .. retryLimit .. ")")
             wait(10)
         end
-    until not nextCursor
+    until retries >= retryLimit
 
+    -- Return empty if no servers were found after retries
     return servers
 end
 
@@ -116,7 +125,14 @@ local function hopServer()
     if #suitableServers > 0 then
         local serverToJoin = suitableServers[math.random(1, #suitableServers)]
         print("🌍 Hopping to server: " .. serverToJoin.id)
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
+        -- Attempt to teleport to the selected server
+        local success, err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
+        end)
+
+        if not success then
+            print("❌ Error while teleporting: " .. err)
+        end
     else
         print("❌ No suitable servers found. Retrying in 10 seconds...")
         wait(10)
