@@ -1,4 +1,4 @@
-wait(15)
+wait(10)
 -- Load configuration from _G (defaults to false if not set)
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
