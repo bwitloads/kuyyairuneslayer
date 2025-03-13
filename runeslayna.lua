@@ -1,13 +1,13 @@
 wait(10)
 
--- ✅ Load configurations
+-- Load configuration from _G (defaults to false if not set)
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
 local DireBearCheck = _G.DireBearCheck or false
 local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBossesInServer = {} -- Track bosses announced in the current server
-local sentJobIDs = {} -- Store job IDs to prevent duplicate webhooks
+local sentJobIDs = {} -- Store job IDs to ensure webhook is sent only once per server
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -17,7 +17,7 @@ local LocalPlayer = Players.LocalPlayer
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
 
--- ✅ Function to send webhook message to Discord
+-- Function to send a message to Discord (only once per server, based on job ID)
 local function sendWebhookMessage(bossName)
     local currentJobId = game.JobId
 
@@ -54,7 +54,7 @@ local function sendWebhookMessage(bossName)
     end
 end
 
--- ✅ Function to check for selected mobs in the server
+-- Function to check for selected mobs in the server
 local function isTargetMobPresent()
     local mobs = {
         { name = "Vangar", enabled = VangarCheck },
@@ -78,56 +78,57 @@ local function isTargetMobPresent()
     return false
 end
 
--- ✅ Function to fetch server list with pagination
-local function getServerList()
-    local servers = {}
-    local nextCursor = nil
+-- Function to fetch available servers
+local function fetchServers()
+    local apiUrl = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    local retries = 3
 
-    repeat
-        wait(5) -- Small delay to avoid rate limits
-        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100" .. (nextCursor and "&cursor=" .. nextCursor or "")
+    for attempt = 1, retries do
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url, true))
+            return HttpService:JSONDecode(game:HttpGet(apiUrl))
         end)
 
         if success and result and result.data then
-            for _, server in pairs(result.data) do
-                if server.id ~= game.JobId and server.playing >= 3 and server.playing <= 10 then
-                    table.insert(servers, server)
-                end
-            end
-            nextCursor = result.nextPageCursor
+            return result.data
         else
-            print("❌ Failed to fetch server list. Retrying in 30 seconds...")
-            wait(30)
+            print("❌ Failed to fetch server list. Retrying... (" .. attempt .. "/" .. retries .. ")")
+            wait(5)
         end
-    until not nextCursor
+    end
 
-    return servers
+    print("❌ Failed to fetch server list after retries.")
+    return nil
 end
 
--- ✅ Function to hop to a new server
+-- Function to hop servers
 local function hopServer()
     print("🔍 Searching for a new server with 3-10 players...")
 
-    local servers = getServerList()
+    local servers = fetchServers()
+    if not servers then
+        print("❌ Could not retrieve server list. Joining any random server...")
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        return
+    end
 
-    if #servers > 0 then
-        local serverToJoin = servers[math.random(1, #servers)]
-        print("🌍 Hopping to server: " .. serverToJoin.id)
+    local suitableServers = {}
+    for _, server in ipairs(servers) do
+        if server.playing >= 3 and server.playing <= 10 and server.id ~= game.JobId then
+            table.insert(suitableServers, server)
+        end
+    end
+
+    if #suitableServers > 0 then
+        local serverToJoin = suitableServers[math.random(1, #suitableServers)]
+        print("🌍 Hopping to suitable server: " .. serverToJoin.id)
         TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
-
-        -- Reset tracking for the new server
-        sentJobIDs = {}
-        foundBossesInServer = {}
     else
-        print("❌ No suitable servers found. Retrying in 30 seconds...")
-        wait(30)
-        return hopServer()
+        print("❌ No suitable servers found. Joining any available server...")
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
     end
 end
 
--- ✅ Main Loop
+-- Main Loop
 while true do
     if isTargetMobPresent() then
         print("Boss found and webhook sent. Stopping for this server.")
@@ -135,5 +136,5 @@ while true do
     else
         hopServer()
     end
-    wait(300) -- Wait 5 minutes before checking again
+    wait(300) -- Wait 5 minutes before checking again after a hop
 end
