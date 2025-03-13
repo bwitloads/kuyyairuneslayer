@@ -1,12 +1,13 @@
 wait(10)
--- Load configuration from _G (defaults to false if not set)
+
+-- ✅ Load configurations
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
 local DireBearCheck = _G.DireBearCheck or false
 local RuneGolemCheck = _G.RuneGolemCheck or false
 
 local foundBossesInServer = {} -- Track bosses announced in the current server
-local sentJobIDs = {} -- Store job IDs to ensure webhook is sent only once per server
+local sentJobIDs = {} -- Store job IDs to prevent duplicate webhooks
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -16,16 +17,14 @@ local LocalPlayer = Players.LocalPlayer
 local webhookURL = "https://discord.com/api/webhooks/1348572811077357598/vJZzkEdK0xUTuyRGqpSd1Bj2dq8ppPtGrT52XunQaLEUyDWk8eO6EYYSldKKwUevq8zH" 
 local roleID = "1348612147592171585"
 
--- Function to send a message to Discord (only once per server, based on job ID)
+-- ✅ Function to send webhook message to Discord
 local function sendWebhookMessage(bossName)
     local currentJobId = game.JobId
 
-    -- Check if the webhook for this job ID has already been sent
     if sentJobIDs[currentJobId] then
         return
     end
 
-    -- Format the content message
     local playerId = LocalPlayer.UserId
     local playerProfileLink = string.format("https://roblox.com/users/%d/profile", playerId)
     local contentMessage = string.format("**Boss '%s' found in server with Job ID: %s**\nPlayer: [Roblox Profile](%s)", bossName, currentJobId, playerProfileLink)
@@ -48,14 +47,14 @@ local function sendWebhookMessage(bossName)
 
     if success and response and response.StatusCode == 200 then
         print("✅ Webhook sent successfully for " .. bossName)
-        foundBossesInServer[bossName] = true -- Mark boss as announced in this server
-        sentJobIDs[currentJobId] = true -- Store the job ID to prevent sending duplicate webhooks for this server
+        foundBossesInServer[bossName] = true
+        sentJobIDs[currentJobId] = true
     else
         print("❌ Error sending webhook. Response:", response and response.StatusCode or "Unknown")
     end
 end
 
--- Function to check for selected mobs in the server
+-- ✅ Function to check for selected mobs in the server
 local function isTargetMobPresent()
     local mobs = {
         { name = "Vangar", enabled = VangarCheck },
@@ -71,7 +70,7 @@ local function isTargetMobPresent()
                 if mob.enabled and not foundBossesInServer[mob.name] and string.find(lowerName, string.lower(mob.name)) then
                     print("✅ " .. mob.name .. " FOUND!")
                     sendWebhookMessage(mob.name)
-                    return true -- Only send once per server and stop after the first boss is found
+                    return true
                 end
             end
         end
@@ -79,72 +78,62 @@ local function isTargetMobPresent()
     return false
 end
 
--- Function to get a list of available servers
+-- ✅ Function to fetch server list with pagination
 local function getServerList()
     local servers = {}
     local nextCursor = nil
-    local retryLimit = 3
-    local retries = 0
 
     repeat
+        wait(5) -- Small delay to avoid rate limits
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100" .. (nextCursor and "&cursor=" .. nextCursor or "")
         local success, result = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100" .. (nextCursor and "&cursor=" .. nextCursor or ""), true))
+            return HttpService:JSONDecode(game:HttpGet(url, true))
         end)
 
         if success and result and result.data then
-            -- Filter servers with valid player counts and different Job IDs
             for _, server in pairs(result.data) do
-                if server.id ~= game.JobId and server.playing >= 3 and server.playing <= 8 then
+                if server.id ~= game.JobId and server.playing >= 3 and server.playing <= 10 then
                     table.insert(servers, server)
                 end
             end
-            if #servers > 0 then
-                return servers
-            else
-                print("❌ No suitable servers found in this batch.")
-            end
+            nextCursor = result.nextPageCursor
         else
-            retries = retries + 1
-            print("❌ Failed to fetch server list. Retrying... (" .. retries .. "/" .. retryLimit .. ")")
-            wait(10)
+            print("❌ Failed to fetch server list. Retrying in 30 seconds...")
+            wait(30)
         end
-    until retries >= retryLimit
+    until not nextCursor
 
-    -- Return empty if no servers were found after retries
     return servers
 end
 
--- Function to hop servers
+-- ✅ Function to hop to a new server
 local function hopServer()
     print("🔍 Searching for a new server with 3-10 players...")
 
-    local suitableServers = getServerList()
+    local servers = getServerList()
 
-    if #suitableServers > 0 then
-        local serverToJoin = suitableServers[math.random(1, #suitableServers)]
+    if #servers > 0 then
+        local serverToJoin = servers[math.random(1, #servers)]
         print("🌍 Hopping to server: " .. serverToJoin.id)
-        -- Attempt to teleport to the selected server
-        local success, err = pcall(function()
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
-        end)
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, serverToJoin.id, LocalPlayer)
 
-        if not success then
-            print("❌ Error while teleporting: " .. err)
-        end
+        -- Reset tracking for the new server
+        sentJobIDs = {}
+        foundBossesInServer = {}
     else
-        print("❌ No suitable servers found. Retrying in 10 seconds...")
-        wait(10)
-        hopServer()
+        print("❌ No suitable servers found. Retrying in 30 seconds...")
+        wait(30)
+        return hopServer()
     end
 end
 
--- Main Loop
+-- ✅ Main Loop
 while true do
     if isTargetMobPresent() then
         print("Boss found and webhook sent. Stopping for this server.")
-        break -- Stop after finding and sending the webhook for the first boss
+        break
     else
-        hopServer() -- Hop to a new server if no boss found
+        hopServer()
     end
-    wait(300) -- Wait 5 minutes before checking again after a hop
+    wait(300) -- Wait 5 minutes before checking again
 end
