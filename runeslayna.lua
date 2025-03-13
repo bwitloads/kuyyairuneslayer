@@ -1,5 +1,4 @@
-repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
-
+wait(15)
 -- Load configuration from _G (defaults to false if not set)
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
@@ -79,14 +78,14 @@ local function isTargetMobPresent()
     return false
 end
 
--- Function to fetch all available servers
+-- Improved function to fetch all available servers
 local function fetchAllServers()
     local servers = {}
     local cursor = nil
     local baseUrl = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
     local retries = 3
 
-    while true do
+    while retries > 0 do
         local url = baseUrl
         if cursor then
             url = url .. "&cursor=" .. cursor
@@ -104,10 +103,10 @@ local function fetchAllServers()
             if not cursor then break end -- No more pages left
         else
             print("❌ Failed to fetch servers. Retrying...")
-            wait(5)
             retries = retries - 1
+            wait(5) -- Wait before retrying
             if retries == 0 then
-                print("❌ Could not retrieve servers. Returning empty list.")
+                print("❌ Could not retrieve servers after multiple attempts.")
                 break
             end
         end
