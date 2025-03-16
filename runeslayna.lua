@@ -1,4 +1,4 @@
-wait(10)
+wait(15)
 -- Load configuration from _G (defaults to false if not set)
 local VangarCheck = _G.VangarCheck or false
 local ElderTreantCheck = _G.ElderTreantCheck or false
@@ -111,7 +111,7 @@ local function hopServer()
 
     local suitableServers = {}
     for _, server in ipairs(servers) do
-        if server.playing >= 3 and server.playing <= 7 and server.id ~= game.JobId then
+        if server.playing >= 2 and server.playing <= 7 and server.id ~= game.JobId then
             table.insert(suitableServers, server)
         end
     end
